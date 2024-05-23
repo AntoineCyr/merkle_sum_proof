@@ -5,14 +5,13 @@ use std::hash::Hash;
 use std::hash::Hasher;
 
 /// TO ADD:
-/// Specific get_leaf with index, get node with index
-/// Add value, change or remove value
-/// Verify inclusion with and without merkle path
+/// Add push, pop, remove, add, append, set (with right chosen words)
+/// Verify inclusion
 /// Handle empty tree
-/// Test everything
 /// Decide if should use Result or Option
 /// Option is used for presence of value, and Result for error handling
 /// Do Rust tutorial, make some change to make this better
+
 
 /// The list of nodes includes all nodes of the tree
 /// It is in the form [h1, h2, h3, h4, h12, h34, h1234], where h1234 would be the root and h1-4 is a leaf.
@@ -125,6 +124,14 @@ impl MerkleSumTree {
         self.leafs.clone()
     }
 
+    pub fn get_node(&self, index: usize) -> Node {
+        self.nodes[index].clone()
+    }
+
+    pub fn get_leaf(&self, index: usize) -> Leaf {
+        self.leafs[index].clone()
+    }
+
     pub fn get_height(&self) -> usize {
         self.height.clone()
     }
@@ -133,7 +140,7 @@ impl MerkleSumTree {
         if self.get_leafs().len() <= index {
             return None;
         }
-        let leaf = self.get_leafs()[index].clone();
+        let leaf = self.get_leaf(index);
         let mut path = vec![];
         let height = self.get_height();
         let mut level_size = 1 << (height - 1);
@@ -145,14 +152,14 @@ impl MerkleSumTree {
             println!("level_index: {:?}", level_index);
             println!("level_size: {:?}", level_size);
             if current_index % 2 == 0 {
-                let node = self.get_nodes()[current_index + 1].clone();
+                let node = self.get_node(current_index + 1);
                 let neighbor = Neighbor {
                     position: Position::Right,
                     node,
                 };
                 path.push(neighbor);
             } else {
-                let node = self.get_nodes()[current_index - 1].clone();
+                let node = self.get_node(current_index - 1);
                 let neighbor = Neighbor {
                     position: Position::Left,
                     node,
@@ -238,7 +245,7 @@ mod tests {
         let root_hash = merkle_sum_tree.get_root_hash().unwrap();
         let root_sum = merkle_sum_tree.get_root_sum().unwrap();
         let height = merkle_sum_tree.get_height();
-        let proof = merkle_sum_tree.get_proof(4).unwrap();
+        let proof = merkle_sum_tree.get_proof(3).unwrap();
 
         let nodes = merkle_sum_tree.get_nodes();
         //println!("root_hash: {:?}, root_sum: {:?}", root_hash, root_sum);
