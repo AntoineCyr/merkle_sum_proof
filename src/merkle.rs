@@ -5,8 +5,6 @@ use std::hash::Hash;
 use std::hash::Hasher;
 
 /// TO ADD:
-/// Add push, pop, remove, add, append, set (with right chosen words)
-/// Verify inclusion
 /// Handle empty tree
 /// Decide if should use Result or Option
 /// Option is used for presence of value, and Result for error handling
@@ -89,6 +87,10 @@ impl Leaf {
     pub fn get_node(&self) -> Node {
         self.node.clone()
     }
+
+    pub fn is_none(&self) -> bool {
+        self.get_id() == "0".to_string() && self.get_node().get_value() == 0
+    }
 }
 
 impl Neighbor {
@@ -106,14 +108,7 @@ impl Neighbor {
 
 impl MerkleSumTree {
     pub fn new(mut leafs: Vec<Leaf>) -> MerkleSumTree {
-        println!("new tree");
-        let (nodes, height, zero_index, leafs) = Self::create_tree(leafs.clone());
-        MerkleSumTree {
-            leafs,
-            nodes,
-            height,
-            zero_index,
-        }
+        Self::create_tree(leafs.clone())
     }
 
     pub fn get_root_hash(&self) -> Option<Fr> {
@@ -161,6 +156,31 @@ impl MerkleSumTree {
         self.height.clone()
     }
 
+    fn update_path(&mut self, leaf: Leaf, index: usize) {
+        let height = self.height;
+        let mut level_size = 1 << (height - 1);
+        let mut level_index = index;
+        let mut current_index = index;
+        let mut level_start = 0;
+        let mut current_node = leaf.get_node();
+        for _ in 1..height {
+            if current_index % 2 == 0 {
+                let neighbor = self.get_node(current_index + 1);
+                current_node = Self::build_parent(current_node, neighbor);
+            } else {
+                let neighbor = self.get_node(current_index - 1);
+                current_node = Self::build_parent(neighbor, current_node);
+            }
+            level_start += level_size;
+            level_index = level_index / 2;
+            current_index = level_start + level_index;
+            level_size = level_size / 2;
+            self.nodes[current_index] = current_node.clone();
+            println!("current_index: {}", current_index);
+            println!("current_node value: {}", current_node.get_value());
+        }
+    }
+
     pub fn get_proof(&self, index: usize) -> Option<InclusionProof> {
         if self.get_leafs().len() <= index {
             return None;
@@ -203,16 +223,19 @@ impl MerkleSumTree {
         let path = proof.path;
 
         for neighbor in path {
-            if let Position::Right = neighbor.position {
-                node = Self::build_parent(node, neighbor.node);
-            } else {
-                node = Self::build_parent(neighbor.node, node);
+            match neighbor.position {
+                Position::Right => {
+                    node = Self::build_parent(node, neighbor.node);
+                }
+                Position::Left => {
+                    node = Self::build_parent(neighbor.node, node);
+                }
             }
         }
         node.is_equal(self.get_root().unwrap())
     }
 
-    fn create_tree(mut leafs: Vec<Leaf>) -> (Vec<Node>, usize, Vec<usize>, Vec<Leaf>) {
+    fn create_tree(mut leafs: Vec<Leaf>) -> MerkleSumTree {
         let height;
         let mut zero_index = vec![];
         (leafs, height, zero_index) = Self::fill_leafs(leafs);
@@ -236,7 +259,12 @@ impl MerkleSumTree {
             nodes_to_hash = temp_hash_nodes.clone();
             temp_hash_nodes = vec![];
         }
-        (nodes, height, zero_index, leafs)
+        MerkleSumTree {
+            leafs,
+            nodes,
+            height,
+            zero_index,
+        }
     }
 
     fn fill_leafs(mut leafs: Vec<Leaf>) -> (Vec<Leaf>, usize, Vec<usize>) {
@@ -270,6 +298,51 @@ impl MerkleSumTree {
         let sum = child_1.get_value() + child_2.get_value();
         Node::new(hash[0], sum)
     }
+
+    //Push new leaf, return index
+    pub fn push(&mut self, leaf: Leaf) -> usize {
+        let index = self.zero_index.pop();
+        match index {
+            Some(index_value) => {
+                self.set_leaf(leaf, index_value);
+                index_value
+            }
+            None => {
+                self.leafs.push(leaf);
+                let index_value = self.leafs.len();
+                let new_tree = Self::create_tree(self.leafs.clone());
+                self.update_tree(new_tree);
+                index_value
+            }
+        }
+    }
+    //here
+    //check for empty leaf
+    //normalize function definition
+    pub fn set_leaf(&mut self, leaf: Leaf, index: usize) {
+        if leaf.is_none() && !self.get_leaf(index).is_none() {
+            self.zero_index.push(index);
+        }
+        if !leaf.is_none() && self.get_leaf(index).is_none() {
+            //remove zero
+            //create sorted list for zero index
+        }
+        self.leafs[index] = leaf.clone();
+        self.nodes[index] = leaf.get_node();
+        self.update_path(leaf, index);
+    }
+
+    pub fn remove(&mut self, index: usize) {
+        let leaf = Leaf::new("0".to_string(), 0);
+        self.set_leaf(leaf, index);
+    }
+
+    fn update_tree(&mut self, tree: MerkleSumTree) {
+        self.leafs = tree.leafs;
+        self.nodes = tree.nodes;
+        self.height = tree.height;
+        self.zero_index = tree.zero_index;
+    }
 }
 
 #[cfg(test)]
@@ -284,27 +357,23 @@ mod tests {
         let leaf_4 = Leaf::new("10566215".to_string(), 13);
         let leaf_5 = Leaf::new("10566215".to_string(), 14);
 
-        //let merkle_sum_tree = MerkleSumTree::new(vec![leaf_1, leaf_2, leaf_3, leaf_4, leaf_5]);
-        let merkle_sum_tree = MerkleSumTree::new(vec![leaf_1.clone(), leaf_2, leaf_3]);
+        let mut merkle_sum_tree =
+            MerkleSumTree::new(vec![leaf_1.clone(), leaf_2, leaf_3, leaf_4, leaf_5]);
+        merkle_sum_tree.set_leaf(leaf_1, 5);
+        //root_hash: Fr(0x2d2772b8cb7f2484bad633e9c882a42dc72b4bc9dc407f9657bddfc2062f7ff2), root_sum: 60
         let root_hash = merkle_sum_tree.get_root_hash().unwrap();
         let root_sum = merkle_sum_tree.get_root_sum().unwrap();
         let height = merkle_sum_tree.get_height();
         let proof = merkle_sum_tree.get_proof(3).unwrap();
 
-        let leafs = merkle_sum_tree.get_leafs();
+        let nodes = merkle_sum_tree.get_nodes();
         let zero_index = merkle_sum_tree.get_zero_index();
         let included = merkle_sum_tree.verify_proof(proof.clone());
-        //println!("root_hash: {:?}, root_sum: {:?}", root_hash, root_sum);
-        println!("leafs: {:?}", leafs);
+        println!("root_hash: {:?}, root_sum: {:?}", root_hash, root_sum);
+        println!("nodes: {:?}", nodes);
         //println!("height: {:?}", height);
-        println!("path: {:?}", proof.path);
-        println!(
-            "included: {:?}",
-            merkle_sum_tree.verify_proof(InclusionProof {
-                leaf: leaf_1,
-                path: proof.path.clone()
-            })
-        );
+        //println!("path: {:?}", proof.path);
+        println!("included: {:?}", merkle_sum_tree.verify_proof(proof));
         println!("zero_index: {:?}", zero_index)
     }
 }
