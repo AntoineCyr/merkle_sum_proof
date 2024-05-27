@@ -314,8 +314,8 @@ impl MerkleSumTree {
     pub fn push(&mut self, leaf: Leaf) -> Result<usize> {
         match self.zero_index.len() {
             0 => {
-                self.leafs.push(leaf);
                 let index_value = self.leafs.len();
+                self.leafs.push(leaf);
                 let new_tree = Self::create_tree(self.leafs.clone())?;
                 _ = self.update_tree(new_tree);
                 Ok(index_value)
@@ -327,6 +327,8 @@ impl MerkleSumTree {
             }
         }
     }
+
+    //Modify a current leaf
     pub fn set_leaf(&mut self, leaf: Leaf, index: usize) -> Result<()> {
         if leaf.is_none() && !self.get_leaf(index).unwrap().is_none() {
             let pos = self.zero_index.binary_search(&index).unwrap_or_else(|e| e);
