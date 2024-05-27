@@ -1,3 +1,6 @@
+mod constants;
+mod mimc_sponge;
+
 use crate::mimc_sponge::{Fr, MimcSponge};
 use anyhow::Result;
 use ff::{self, *};
@@ -9,6 +12,8 @@ use std::hash::Hasher;
 /// TO ADD:
 /// readME
 /// Comments
+/// Separate merkle and proof?
+/// Borrowing, ownership, box?
 ///
 ///
 /// LATER:

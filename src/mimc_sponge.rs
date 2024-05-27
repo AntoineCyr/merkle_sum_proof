@@ -92,13 +92,8 @@ impl MimcSponge {
 #[cfg(test)]
 mod tests {
     use super::*;
-    //create function to get all proof of inclusion inputs
     #[test]
     fn it_works() {
-        //leaf_1: Leaf { id: "11672136", id_hash: Fr(0x0000000000000000000000000000000000000000000000003309c891ce14a103), value: 10 }
-        //leaf_2: Leaf { id: "10566265", id_hash: Fr(0x000000000000000000000000000000000000000000000000c0cd4e53cd09276f), value: 11 }
-        //root 0x0467bba3be1311be62439b3e7cb08695cfefc186add485bdf89bd0bb30e9bb4f
-
         let arr = vec![
             Fr::from_str_vartime("3677691099277992195").unwrap(),
             Fr::from_str_vartime("10").unwrap(),
