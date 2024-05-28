@@ -3,6 +3,8 @@
 use crate::constants::C_STR;
 use ff::{self, *};
 use once_cell::sync::Lazy;
+use regex::Regex;
+use std::fmt;
 use std::ops::AddAssign;
 
 #[derive(PrimeField)]
@@ -10,6 +12,14 @@ use std::ops::AddAssign;
 #[PrimeFieldGenerator = "7"]
 #[PrimeFieldReprEndianness = "little"]
 pub struct Fr([u64; 4]);
+impl fmt::Display for Fr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut format = format!("{:?}", self);
+        format = format.replace("Fr(", "");
+        format = format.replace(")", "");
+        write!(f, "{}", format)
+    }
+}
 
 const DEFAULT_CONSTS_LEN: usize = C_STR.len();
 static DEFAULT_CONSTS: Lazy<[Fr; DEFAULT_CONSTS_LEN]> = Lazy::new(|| {
@@ -104,6 +114,6 @@ mod tests {
         let k = Fr::from_str_vartime("0").unwrap();
         let ms = MimcSponge::default();
         let res = ms.multi_hash(&arr, k, 1);
-        println!("res:  {:?}", res[0]);
+        println!("res: {}", res[0].to_string());
     }
 }

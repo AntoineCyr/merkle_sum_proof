@@ -194,7 +194,7 @@ impl MerkleSumTree {
         Ok(())
     }
 
-    pub fn get_proof(&self, index: usize) -> Result<(Option<InclusionProof>)> {
+    pub fn get_proof(&self, index: usize) -> Result<Option<InclusionProof>> {
         if self.get_leafs().len() <= index {
             return Ok(None);
         }
