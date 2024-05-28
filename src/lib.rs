@@ -34,31 +34,31 @@ pub struct MerkleSumTree {
     zero_index: Vec<usize>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Leaf {
     id: String,
     node: Node,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Node {
     hash: Fr,
     value: i32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct InclusionProof {
     leaf: Leaf,
     path: Vec<Neighbor>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Neighbor {
     position: Position,
     node: Node,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Position {
     Left,
     Right,
@@ -253,10 +253,15 @@ impl MerkleSumTree {
         let mut nodes: Vec<Node> = vec![];
         let mut nodes_to_hash: Vec<Node> = vec![];
         let mut temp_hash_nodes: Vec<Node> = vec![];
+        let mut i = 0;
         for leaf in leafs.iter() {
+            if leaf.is_none() {
+                zero_index.push(i)
+            }
             let node = leaf.get_node();
             nodes.push(node.clone());
             nodes_to_hash.push(node);
+            i += 1
         }
         while nodes_to_hash.len() > 1 {
             let mut j = 0;
@@ -358,6 +363,15 @@ impl MerkleSumTree {
     }
 }
 
+impl InclusionProof {
+    pub fn get_path(&self) -> Vec<Neighbor> {
+        self.path.clone()
+    }
+    pub fn get_leaf(&self) -> Leaf {
+        self.leaf.clone()
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -370,14 +384,17 @@ mod tests {
         let leaf_4 = Leaf::new("10566215".to_string(), 13);
         let leaf_5 = Leaf::new("10566215".to_string(), 14);
         let leaf_0 = Leaf::new("0".to_string(), 0);
-        let mut merkle_sum_tree = MerkleSumTree::new(vec![leaf_1]).unwrap();
-        merkle_sum_tree.push(leaf_2);
-        merkle_sum_tree.push(leaf_3);
-        merkle_sum_tree.push(leaf_4);
-        merkle_sum_tree.push(leaf_5);
-        merkle_sum_tree.remove(3);
+        let mut leafs = vec![leaf_0.clone()];
+        for i in 0..7 {
+            leafs.push(leaf_0.clone());
+        }
+        let mut merkle_sum_tree = MerkleSumTree::new(leafs).unwrap();
+
+        //merkle_sum_tree.push(leaf_2);
+        //merkle_sum_tree.remove(3);
+        println!("{:?}", merkle_sum_tree.get_leafs());
         println!("{:?}", merkle_sum_tree.get_zero_index());
         println!("{:?}", merkle_sum_tree.get_leaf(3));
-        println!("{:?}", merkle_sum_tree.get_leafs());
+        println!("{:?}", merkle_sum_tree.get_root());
     }
 }
