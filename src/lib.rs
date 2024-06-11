@@ -13,8 +13,8 @@ use std::hash::Hasher;
 /// readME
 /// Comments
 /// Separate merkle and proof?
-/// Borrowing, ownership, box?
-/// Use of reference instead of clone each time?
+/// Use box?
+/// Use of reference instead of clone each time
 ///
 /// LATER:
 /// Hash function as input
@@ -382,19 +382,21 @@ mod tests {
         let leaf_2 = Leaf::new("10566265".to_string(), 11);
         let leaf_3 = Leaf::new("10566215".to_string(), 12);
         let leaf_4 = Leaf::new("10566215".to_string(), 13);
-        let leaf_5 = Leaf::new("10566215".to_string(), 14);
         let leaf_0 = Leaf::new("0".to_string(), 0);
-        let mut leafs = vec![leaf_0.clone()];
-        for i in 0..7 {
-            leafs.push(leaf_0.clone());
-        }
+        let mut leafs = vec![
+            leaf_0.clone(),
+            leaf_0.clone(),
+            leaf_0.clone(),
+            leaf_0.clone(),
+        ];
+
         let mut merkle_sum_tree = MerkleSumTree::new(leafs).unwrap();
 
-        //merkle_sum_tree.push(leaf_2);
-        //merkle_sum_tree.remove(3);
-        println!("{:?}", merkle_sum_tree.get_leafs());
-        println!("{:?}", merkle_sum_tree.get_zero_index());
-        println!("{:?}", merkle_sum_tree.get_leaf(3));
+        //7270102280961693760725023799639149982274443118879847539912228780362948820462
         println!("{:?}", merkle_sum_tree.get_root());
+        println!("{:?}", merkle_sum_tree.get_nodes());
+        println!("{:?}", merkle_sum_tree.get_proof(0));
+        merkle_sum_tree.push(leaf_1);
+        println!("{:?}", merkle_sum_tree.get_nodes());
     }
 }

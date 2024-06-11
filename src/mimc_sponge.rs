@@ -2,13 +2,17 @@
 #![allow(clippy::too_many_arguments)]
 use crate::constants::C_STR;
 use ff::{self, *};
+use num::{BigInt, Num};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::fmt;
 use std::ops::AddAssign;
 
 #[derive(PrimeField)]
-#[PrimeFieldModulus = "21888242871839275222246405745257275088548364400416034343698204186575808495617"]
+//Modulus for circom
+//#[PrimeFieldModulus = "21888242871839275222246405745257275088548364400416034343698204186575808495617"]
+//Modulus for nova folding
+#[PrimeFieldModulus = "28948022309329048855892746252171976963363056481941647379679742748393362948097"]
 #[PrimeFieldGenerator = "7"]
 #[PrimeFieldReprEndianness = "little"]
 pub struct Fr([u64; 4]);
@@ -105,9 +109,9 @@ mod tests {
     #[test]
     fn it_works() {
         let arr = vec![
-            Fr::from_str_vartime("3677691099277992195").unwrap(),
+            Fr::from_str_vartime("11672136").unwrap(),
             Fr::from_str_vartime("10").unwrap(),
-            Fr::from_str_vartime("13892846547337029487").unwrap(),
+            Fr::from_str_vartime("10566265").unwrap(),
             Fr::from_str_vartime("11").unwrap(),
         ];
         println!("arr: {:?}", arr);
