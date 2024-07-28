@@ -2,9 +2,7 @@
 #![allow(clippy::too_many_arguments)]
 use crate::constants::C_STR;
 use ff::{self, *};
-use num::{BigInt, Num};
 use once_cell::sync::Lazy;
-use regex::Regex;
 use std::fmt;
 use std::ops::AddAssign;
 

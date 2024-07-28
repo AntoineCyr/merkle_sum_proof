@@ -9,23 +9,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
 
-/// TO ADD:
-/// readME
-/// Comments
-/// Separate merkle and proof?
-/// Use box?
-/// Use of reference instead of clone each time
-///
-/// LATER:
-/// Hash function as input
-/// Resize the tree
-///
 
-/// The list of nodes includes all nodes of the tree
-/// It is in the form [h1, h2, h3, h4, h12, h34, h1234], where h1234 would be the root and h1-4 is a leaf.
-/// The number of leafs needs to be power of 2. The tree will be filled with 0 to keep the power of 2 intact.
-/// Leafs will return only the leafs without the 0 values.
-/// Nodes will return all nodes inlcuding the 0 value leafs.
 #[derive(Debug, Clone)]
 pub struct MerkleSumTree {
     leafs: Vec<Leaf>,
@@ -392,7 +376,6 @@ mod tests {
 
         let mut merkle_sum_tree = MerkleSumTree::new(leafs).unwrap();
 
-        //7270102280961693760725023799639149982274443118879847539912228780362948820462
         println!("{:?}", merkle_sum_tree.get_root());
         println!("{:?}", merkle_sum_tree.get_nodes());
         println!("{:?}", merkle_sum_tree.get_proof(0));
