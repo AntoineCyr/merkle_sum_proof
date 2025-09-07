@@ -1,6 +1,3 @@
-// Hardcoded constants generated in circom implementation of MiMC
-// Rounds: 220
-// Seed: "mimcsponge"
 
 pub const C_STR: [&str; 220] = [
     "0",

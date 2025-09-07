@@ -1,4 +1,4 @@
-#![allow(clippy::derive_hash_xor_eq)]
+#![allow(clippy::derived_hash_with_manual_eq)]
 #![allow(clippy::too_many_arguments)]
 use crate::constants::C_STR;
 use ff::{self, *};
@@ -27,10 +27,10 @@ const DEFAULT_CONSTS_LEN: usize = C_STR.len();
 static DEFAULT_CONSTS: Lazy<[Fr; DEFAULT_CONSTS_LEN]> = Lazy::new(|| {
     C_STR
         .iter()
-        .map(|s| Fr::from_str_vartime(s).unwrap())
+        .map(|s| Fr::from_str_vartime(s).expect("Valid constant from C_STR"))
         .collect::<Vec<_>>()
         .try_into()
-        .unwrap()
+        .expect("Correct number of constants")
 });
 
 pub struct MimcSponge {
@@ -52,7 +52,7 @@ impl MimcSponge {
         let last_index = self.constants.len() - 1;
 
         for (i, c) in self.constants.iter().enumerate() {
-            t = Fr::from_str_vartime("0").unwrap();
+            t = Fr::from_str_vartime("0").expect("Zero is valid Fr");
 
             t.add_assign(&xl);
             t.add_assign(&k);
@@ -77,10 +77,9 @@ impl MimcSponge {
         (xl, xr)
     }
 
-    /// Takes &slice of Fr elements, key and num_outputs
     pub fn multi_hash(&self, arr: &[Fr], key: Fr, num_outputs: usize) -> Vec<Fr> {
-        let mut r = Fr::from_str_vartime("0").unwrap();
-        let mut c = Fr::from_str_vartime("0").unwrap();
+        let mut r = Fr::from_str_vartime("0").expect("Zero is valid Fr");
+        let mut c = Fr::from_str_vartime("0").expect("Zero is valid Fr");
 
         for elem in arr {
             r.add_assign(elem);
@@ -107,13 +106,13 @@ mod tests {
     #[test]
     fn it_works() {
         let arr = vec![
-            Fr::from_str_vartime("11672136").unwrap(),
-            Fr::from_str_vartime("10").unwrap(),
-            Fr::from_str_vartime("10566265").unwrap(),
-            Fr::from_str_vartime("11").unwrap(),
+            Fr::from_str_vartime("11672136").expect("Valid test value"),
+            Fr::from_str_vartime("10").expect("Valid test value"),
+            Fr::from_str_vartime("10566265").expect("Valid test value"),
+            Fr::from_str_vartime("11").expect("Valid test value"),
         ];
         println!("arr: {:?}", arr);
-        let k = Fr::from_str_vartime("0").unwrap();
+        let k = Fr::from_str_vartime("0").expect("Zero is valid Fr");
         let ms = MimcSponge::default();
         let res = ms.multi_hash(&arr, k, 1);
         println!("res: {}", res[0].to_string());

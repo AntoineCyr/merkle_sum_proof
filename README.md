@@ -1,6 +1,6 @@
 # Merkle Sum Tree Library
 
-This library implements a Merkle Sum Tree data structure using Rust. It provides functionalities to create a Merkle Sum Tree, add and remove leaf nodes, generate and verify inclusion proofs, and retrieve tree properties.
+This library implements a Merkle Sum Tree data structure using Rust with MiMC hash function for zero-knowledge proofs. It provides functionalities to create a Merkle Sum Tree, add and remove leaf nodes, generate and verify inclusion proofs, and retrieve tree properties.
 
 ## Features
 
@@ -33,17 +33,17 @@ A struct representing the Merkle Sum Tree.
 
 - **Methods:**
   - `new(leafs: Vec<Leaf>) -> Result<MerkleSumTree>`: Creates a new Merkle Sum Tree from a list of leaf nodes.
-  - `get_root_hash(&self) -> Option<Fr>`: Returns the root hash of the tree.
-  - `get_root_sum(&self) -> Option<i32>`: Returns the root sum of the tree.
-  - `get_root(&self) -> Option<Node>`: Returns the root node of the tree.
-  - `get_nodes(&self) -> Vec<Node>`: Returns all the nodes of the tree.
-  - `get_leafs(&self) -> Vec<Leaf>`: Returns all the non-zero leafs of the tree.
-  - `get_zero_index(&self) -> Vec<usize>`: Returns the zero index vector.
-  - `get_node(&self, index: usize) -> Option<Node>`: Returns a node at a specific index.
-  - `get_leaf(&self, index: usize) -> Option<Leaf>`: Returns a leaf at a specific index.
+  - `get_root_hash(&self) -> Result<Fr, MerkleError>`: Returns the root hash of the tree.
+  - `get_root_sum(&self) -> Result<i32, MerkleError>`: Returns the root sum of the tree.
+  - `get_root(&self) -> Result<Node, MerkleError>`: Returns the root node of the tree.
+  - `get_nodes(&self) -> &[Node]`: Returns reference to all nodes of the tree.
+  - `get_leafs(&self) -> &[Leaf]`: Returns reference to all leafs of the tree.
+  - `get_zero_index(&self) -> &[usize]`: Returns reference to the zero index vector.
+  - `get_node(&self, index: usize) -> Result<Node, MerkleError>`: Returns a node at a specific index.
+  - `get_leaf(&self, index: usize) -> Result<Leaf, MerkleError>`: Returns a leaf at a specific index.
   - `get_height(&self) -> usize`: Returns the height of the tree.
-  - `get_proof(&self, index: usize) -> Result<Option<InclusionProof>>`: Generates an inclusion proof for a given leaf node.
-  - `verify_proof(&self, proof: InclusionProof) -> Result<bool>`: Verifies an inclusion proof.
+  - `get_proof(&self, index: usize) -> Result<InclusionProof, MerkleError>`: Generates an inclusion proof for a given leaf node.
+  - `verify_proof(&self, proof: &InclusionProof) -> Result<bool, MerkleError>`: Verifies an inclusion proof.
   - `push(&mut self, leaf: Leaf) -> Result<usize>`: Adds a new leaf node to the tree and returns its index.
   - `set_leaf(&mut self, leaf: Leaf, index: usize) -> Result<()>`: Modifies a current leaf node.
   - `remove(&mut self, index: usize) -> Result<()>`: Removes a leaf node from the tree.
@@ -58,7 +58,7 @@ A struct representing a leaf node in the Merkle Sum Tree.
 
 - **Methods:**
   - `new(id: String, value: i32) -> Leaf`: Creates a new leaf node with the given id and value.
-  - `get_id(&self) -> String`: Returns the id of the leaf.
+  - `get_id(&self) -> &str`: Returns the id of the leaf.
   - `get_node(&self) -> Node`: Returns the node associated with the leaf.
   - `is_none(&self) -> bool`: Checks if the leaf is a zero-value leaf.
 
@@ -85,8 +85,8 @@ A struct representing an inclusion proof in the Merkle Sum Tree.
   - `path: Vec<Neighbor>`: The path of neighbor nodes for the proof.
 
 - **Methods:**
-  - `get_path(&self) -> Vec<Neighbor>`: Returns the path of neighbor nodes.
-  - `get_leaf(&self) -> Leaf`: Returns the leaf node being proved.
+  - `get_path(&self) -> &[Neighbor]`: Returns the path of neighbor nodes.
+  - `get_leaf(&self) -> &Leaf`: Returns the leaf node being proved.
 
 #### Neighbor
 
@@ -108,3 +108,18 @@ An enum representing the position of a neighbor node in the Merkle Sum Tree.
 - **Variants:**
   - `Left`: The neighbor node is on the left.
   - `Right`: The neighbor node is on the right.
+
+## Limitations
+
+### Tree Structure
+- Maximum tree height: 64 levels (enforced during construction)
+- Tree size must be a power of 2 (automatically padded with zero-value leaves)
+- Empty trees are not allowed
+
+### Value Constraints
+- Leaf values are `i32` integers
+- Sum overflow protection: operations fail if sum exceeds `i32::MAX`
+- Zero-value leaves have id "0" and value 0
+
+### Performance Considerations
+- Tree reconstruction occurs when adding leaves to a full tree
