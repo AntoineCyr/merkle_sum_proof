@@ -1,4 +1,8 @@
 //! Merkle Sum Tree implementation with MiMC hash function for zero-knowledge proofs.
+//!
+//! This crate provides a Merkle Sum Tree where each node stores both a hash and a sum value.
+//! Useful for proof-of-reserves and similar applications requiring both membership proofs
+//! and aggregate sum verification.
 
 mod constants;
 mod mimc_sponge;
@@ -40,38 +44,44 @@ impl fmt::Display for MerkleError {
 
 impl std::error::Error for MerkleError {}
 
+/// Merkle Sum Tree with MiMC hashing
 #[derive(Debug)]
 pub struct MerkleSumTree {
-    leafs: Vec<Leaf>,
+    leaves: Vec<Leaf>,
     nodes: Vec<Node>,
     height: usize,
     zero_index: Vec<usize>,
 }
 
+/// Leaf node with identifier and value
 #[derive(Debug, Clone, PartialEq)]
 pub struct Leaf {
     id: String,
     node: Node,
 }
 
+/// Tree node containing hash and sum value
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Node {
     hash: Fr,
     value: i32,
 }
 
+/// Proof of leaf inclusion in the tree
 #[derive(Debug, PartialEq)]
 pub struct InclusionProof {
     leaf: Leaf,
     path: Vec<Neighbor>,
 }
 
+/// Neighbor node in proof path
 #[derive(Debug, PartialEq)]
 pub struct Neighbor {
     position: Position,
     node: Node,
 }
 
+/// Position of neighbor relative to current node
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Position {
     Left,
@@ -87,10 +97,6 @@ impl Node {
     }
     pub fn get_value(&self) -> i32 {
         self.value
-    }
-
-    pub fn is_equal(&self, node: Node) -> bool {
-        self.get_hash() == node.get_hash() && self.get_value() == node.get_value()
     }
 }
 
@@ -129,8 +135,9 @@ impl Neighbor {
 }
 
 impl MerkleSumTree {
-    pub fn new(leafs: Vec<Leaf>) -> Result<MerkleSumTree, MerkleError> {
-        Self::create_tree(leafs)
+    /// Creates a new Merkle Sum Tree from leaves (auto-pads to power of 2)
+    pub fn new(leaves: Vec<Leaf>) -> Result<MerkleSumTree, MerkleError> {
+        Self::create_tree(leaves)
     }
 
     pub fn get_root_hash(&self) -> Result<Fr, MerkleError> {
@@ -158,8 +165,8 @@ impl MerkleSumTree {
         &self.nodes
     }
 
-    pub fn get_leafs(&self) -> &[Leaf] {
-        &self.leafs
+    pub fn get_leaves(&self) -> &[Leaf] {
+        &self.leaves
     }
 
     pub fn get_zero_index(&self) -> &[usize] {
@@ -177,13 +184,13 @@ impl MerkleSumTree {
     }
 
     pub fn get_leaf(&self, index: usize) -> Result<Leaf, MerkleError> {
-        if index >= self.leafs.len() {
+        if index >= self.leaves.len() {
             return Err(MerkleError::IndexOutOfBounds {
                 index,
-                max: self.leafs.len().saturating_sub(1),
+                max: self.leaves.len().saturating_sub(1),
             });
         }
-        Ok(self.leafs[index].clone())
+        Ok(self.leaves[index].clone())
     }
 
     pub fn get_height(&self) -> usize {
@@ -214,11 +221,12 @@ impl MerkleSumTree {
         Ok(())
     }
 
+    /// Generates an inclusion proof for the leaf at given index
     pub fn get_proof(&self, index: usize) -> Result<InclusionProof, MerkleError> {
-        if index >= self.get_leafs().len() {
+        if index >= self.get_leaves().len() {
             return Err(MerkleError::IndexOutOfBounds {
                 index,
-                max: self.leafs.len().saturating_sub(1),
+                max: self.leaves.len().saturating_sub(1),
             });
         }
         let leaf = self.get_leaf(index)?;
@@ -252,6 +260,7 @@ impl MerkleSumTree {
         Ok(InclusionProof { leaf, path })
     }
 
+    /// Verifies an inclusion proof against the current tree root
     pub fn verify_proof(&self, proof: &InclusionProof) -> Result<bool, MerkleError> {
         let mut node = proof.leaf.get_node();
 
@@ -262,23 +271,23 @@ impl MerkleSumTree {
             }
         }
         let root = self.get_root()?;
-        Ok(node.is_equal(root))
+        Ok(node == root)
     }
 
-    fn create_tree(mut leafs: Vec<Leaf>) -> Result<MerkleSumTree, MerkleError> {
-        if leafs.is_empty() {
+    fn create_tree(mut leaves: Vec<Leaf>) -> Result<MerkleSumTree, MerkleError> {
+        if leaves.is_empty() {
             return Err(MerkleError::InvalidTree(
                 "Cannot create tree with no leaves".to_string(),
             ));
         }
 
-        let (height, mut zero_index) = Self::fill_leafs(&mut leafs)?;
+        let (height, mut zero_index) = Self::fill_leaves(&mut leaves)?;
 
         let mut nodes: Vec<Node> = vec![];
         let mut nodes_to_hash: Vec<Node> = vec![];
         let mut temp_hash_nodes: Vec<Node> = vec![];
 
-        for (i, leaf) in leafs.iter().enumerate() {
+        for (i, leaf) in leaves.iter().enumerate() {
             if leaf.is_none() {
                 zero_index.push(i)
             }
@@ -299,15 +308,15 @@ impl MerkleSumTree {
         }
 
         Ok(MerkleSumTree {
-            leafs,
+            leaves,
             nodes,
             height,
             zero_index,
         })
     }
 
-    fn fill_leafs(leafs: &mut Vec<Leaf>) -> Result<(usize, Vec<usize>), MerkleError> {
-        if leafs.is_empty() {
+    fn fill_leaves(leaves: &mut Vec<Leaf>) -> Result<(usize, Vec<usize>), MerkleError> {
+        if leaves.is_empty() {
             return Err(MerkleError::InvalidLeaf(
                 "Cannot process empty leaf vector".to_string(),
             ));
@@ -317,7 +326,7 @@ impl MerkleSumTree {
         let mut height = 1;
         let mut zero_index = vec![];
 
-        while power < leafs.len() {
+        while power < leaves.len() {
             power <<= 1;
             height += 1;
             if height > 64 {
@@ -325,13 +334,13 @@ impl MerkleSumTree {
             }
         }
 
-        let mut index = leafs.len();
+        let mut index = leaves.len();
         let empty_leaf = Leaf::new("0".to_string(), 0);
-        let fill_count = power - leafs.len();
-        leafs.reserve(fill_count);
+        let fill_count = power - leaves.len();
+        leaves.reserve(fill_count);
         for _ in 0..fill_count {
             zero_index.push(index);
-            leafs.push(empty_leaf.clone());
+            leaves.push(empty_leaf.clone());
             index += 1;
         }
         Ok((height, zero_index))
@@ -345,14 +354,19 @@ impl MerkleSumTree {
 
         let child_1_value_fr =
             Fr::from_str_vartime(&child_1.get_value().to_string()).ok_or_else(|| {
-                MerkleError::HashError("Failed to convert child_1 value to Fr".to_string())
+                MerkleError::HashError(format!(
+                    "Failed to convert child_1 value {} to Fr",
+                    child_1.get_value()
+                ))
             })?;
         let child_2_value_fr =
             Fr::from_str_vartime(&child_2.get_value().to_string()).ok_or_else(|| {
-                MerkleError::HashError("Failed to convert child_2 value to Fr".to_string())
+                MerkleError::HashError(format!(
+                    "Failed to convert child_2 value {} to Fr",
+                    child_2.get_value()
+                ))
             })?;
-        let k = Fr::from_str_vartime("0")
-            .ok_or_else(|| MerkleError::HashError("Failed to create zero Fr".to_string()))?;
+        let k = Fr::zero();
 
         let arr = vec![
             child_1.get_hash(),
@@ -373,12 +387,13 @@ impl MerkleSumTree {
         Ok(Node::new(hash[0], sum))
     }
 
+    /// Adds a leaf to the tree, returns its index
     pub fn push(&mut self, leaf: Leaf) -> Result<usize, MerkleError> {
         match self.zero_index.len() {
             0 => {
-                let index_value = self.leafs.len();
-                self.leafs.push(leaf);
-                let new_tree = Self::create_tree(self.leafs.clone())?;
+                let index_value = self.leaves.len();
+                self.leaves.push(leaf);
+                let new_tree = Self::create_tree(self.leaves.clone())?;
                 self.update_tree(new_tree)?;
                 Ok(index_value)
             }
@@ -391,10 +406,10 @@ impl MerkleSumTree {
     }
 
     pub fn set_leaf(&mut self, leaf: Leaf, index: usize) -> Result<(), MerkleError> {
-        if index >= self.leafs.len() {
+        if index >= self.leaves.len() {
             return Err(MerkleError::IndexOutOfBounds {
                 index,
-                max: self.leafs.len().saturating_sub(1),
+                max: self.leaves.len().saturating_sub(1),
             });
         }
 
@@ -409,17 +424,18 @@ impl MerkleSumTree {
             }
         }
 
-        self.leafs[index] = leaf.clone();
+        self.leaves[index] = leaf.clone();
         self.nodes[index] = leaf.get_node();
         self.update_path(leaf, index)?;
         Ok(())
     }
 
+    /// Removes a leaf by setting it to zero value
     pub fn remove(&mut self, index: usize) -> Result<(), MerkleError> {
-        if index >= self.leafs.len() {
+        if index >= self.leaves.len() {
             return Err(MerkleError::IndexOutOfBounds {
                 index,
-                max: self.leafs.len().saturating_sub(1),
+                max: self.leaves.len().saturating_sub(1),
             });
         }
         let leaf = Leaf::new("0".to_string(), 0);
@@ -428,7 +444,7 @@ impl MerkleSumTree {
     }
 
     fn update_tree(&mut self, tree: MerkleSumTree) -> Result<(), MerkleError> {
-        self.leafs = tree.leafs;
+        self.leaves = tree.leaves;
         self.nodes = tree.nodes;
         self.height = tree.height;
         self.zero_index = tree.zero_index;
@@ -453,9 +469,9 @@ mod tests {
     fn test_basic_tree_creation() {
         let leaf_1 = Leaf::new("user1".to_string(), 100);
         let leaf_2 = Leaf::new("user2".to_string(), 200);
-        let leafs = vec![leaf_1, leaf_2];
+        let leaves = vec![leaf_1, leaf_2];
 
-        let tree = MerkleSumTree::new(leafs).expect("Failed to create tree");
+        let tree = MerkleSumTree::new(leaves).expect("Failed to create tree");
 
         assert_eq!(tree.get_height(), 2);
         assert!(tree.get_root_sum().is_ok());
@@ -464,8 +480,8 @@ mod tests {
 
     #[test]
     fn test_empty_tree_error() {
-        let leafs: Vec<Leaf> = vec![];
-        let result = MerkleSumTree::new(leafs);
+        let leaves: Vec<Leaf> = vec![];
+        let result = MerkleSumTree::new(leaves);
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), MerkleError::InvalidTree(_)));
     }
@@ -477,8 +493,8 @@ mod tests {
         let leaf_3 = Leaf::new("account3".to_string(), 150);
         let leaf_4 = Leaf::new("account4".to_string(), 75);
 
-        let leafs = vec![leaf_1.clone(), leaf_2, leaf_3, leaf_4];
-        let tree = MerkleSumTree::new(leafs).expect("Failed to create tree");
+        let leaves = vec![leaf_1.clone(), leaf_2, leaf_3, leaf_4];
+        let tree = MerkleSumTree::new(leaves).expect("Failed to create tree");
 
         let proof = tree.get_proof(0).expect("Failed to generate proof");
 
@@ -491,8 +507,8 @@ mod tests {
 
     #[test]
     fn test_index_out_of_bounds() {
-        let leafs = vec![Leaf::new("test".to_string(), 1)];
-        let tree = MerkleSumTree::new(leafs).unwrap();
+        let leaves = vec![Leaf::new("test".to_string(), 1)];
+        let tree = MerkleSumTree::new(leaves).unwrap();
 
         let result = tree.get_proof(10);
         assert!(result.is_err());
@@ -513,9 +529,9 @@ mod tests {
     fn test_tree_operations() {
         let leaf_1 = Leaf::new("user1".to_string(), 50);
         let leaf_2 = Leaf::new("user2".to_string(), 100);
-        let leafs = vec![leaf_1, leaf_2];
+        let leaves = vec![leaf_1, leaf_2];
 
-        let mut tree = MerkleSumTree::new(leafs).expect("Failed to create tree");
+        let mut tree = MerkleSumTree::new(leaves).expect("Failed to create tree");
         let initial_sum = tree.get_root_sum().unwrap();
         assert_eq!(initial_sum, 150);
 
@@ -531,13 +547,13 @@ mod tests {
     }
 
     #[test]
-    fn test_node_equality_constant_time() {
+    fn test_node_equality() {
         let node1 = Node::new(Fr::from_str_vartime("123").expect("Valid Fr"), 100);
         let node2 = Node::new(Fr::from_str_vartime("123").expect("Valid Fr"), 100);
         let node3 = Node::new(Fr::from_str_vartime("456").expect("Valid Fr"), 200);
 
-        assert!(node1.is_equal(node2));
-        assert!(!node1.is_equal(node3));
+        assert_eq!(node1, node2);
+        assert_ne!(node1, node3);
     }
 
     #[test]
@@ -552,15 +568,15 @@ mod tests {
 
     #[test]
     fn test_get_methods_return_references() {
-        let leafs = vec![Leaf::new("test".to_string(), 1)];
-        let tree = MerkleSumTree::new(leafs).unwrap();
+        let leaves = vec![Leaf::new("test".to_string(), 1)];
+        let tree = MerkleSumTree::new(leaves).unwrap();
 
         let nodes_ref = tree.get_nodes();
-        let leafs_ref = tree.get_leafs();
+        let leaves_ref = tree.get_leaves();
         let zero_index_ref = tree.get_zero_index();
 
         assert!(!nodes_ref.is_empty());
-        assert!(!leafs_ref.is_empty());
+        assert!(!leaves_ref.is_empty());
         let _ = zero_index_ref.len();
     }
 }

@@ -1,125 +1,54 @@
-# Merkle Sum Tree Library
+# Merkle Sum Tree
 
-This library implements a Merkle Sum Tree data structure using Rust with MiMC hash function for zero-knowledge proofs. It provides functionalities to create a Merkle Sum Tree, add and remove leaf nodes, generate and verify inclusion proofs, and retrieve tree properties.
+A Rust implementation of a Merkle Sum Tree using the MiMC hash function for zero-knowledge proof applications.
 
 ## Features
 
-- Create a Merkle Sum Tree from a list of leaf nodes.
-- Add leaf nodes to the tree.
-- Remove leaf nodes from the tree.
-- Generate an inclusion proof for a given leaf node.
-- Verify an inclusion proof.
-- Retrieve the root hash and sum of the tree.
-- Retrieve nodes, leafs, and tree height.
+- **Tree Operations**: Create, add, remove, and update leaf nodes
+- **Proof Generation**: Generate and verify inclusion proofs
+- **Automatic Padding**: Tree size automatically adjusted to power of 2
+- **Overflow Protection**: Safe integer arithmetic with overflow checking
 
-## Modules and Structs
+## Core Types
 
-### Modules
+### `MerkleSumTree`
+Main tree structure with methods for:
+- `new(leafs: Vec<Leaf>)` - Create tree from leaves
+- `push(&mut self, leaf: Leaf)` - Add new leaf
+- `remove(&mut self, index: usize)` - Remove leaf
+- `get_proof(&self, index: usize)` - Generate inclusion proof
+- `verify_proof(&self, proof: &InclusionProof)` - Verify proof
+- `get_root_hash()`, `get_root_sum()` - Access root values
 
-- `constants`: Contains constants used throughout the library.
-- `mimc_sponge`: Contains the MiMC sponge function implementation.
+### `Leaf`
+Represents a leaf node with an ID and value.
+- `new(id: String, value: i32)` - Create leaf
 
-### Structs
+### `Node`
+Internal node containing hash and sum value.
 
-#### MerkleSumTree
+### `InclusionProof`
+Merkle proof for leaf membership verification.
 
-A struct representing the Merkle Sum Tree.
+## Constraints
 
-- **Fields:**
-  - `leafs: Vec<Leaf>`: A vector of leaf nodes.
-  - `nodes: Vec<Node>`: A vector of nodes.
-  - `height: usize`: The height of the tree.
-  - `zero_index: Vec<usize>`: A vector containing the indices of zero-value nodes.
+- Maximum height: 64 levels
+- Leaf values: `i32` integers with overflow protection
+- Tree size: Must be power of 2 (auto-padded with zero-value leaves)
+- Empty trees not allowed
 
-- **Methods:**
-  - `new(leafs: Vec<Leaf>) -> Result<MerkleSumTree>`: Creates a new Merkle Sum Tree from a list of leaf nodes.
-  - `get_root_hash(&self) -> Result<Fr, MerkleError>`: Returns the root hash of the tree.
-  - `get_root_sum(&self) -> Result<i32, MerkleError>`: Returns the root sum of the tree.
-  - `get_root(&self) -> Result<Node, MerkleError>`: Returns the root node of the tree.
-  - `get_nodes(&self) -> &[Node]`: Returns reference to all nodes of the tree.
-  - `get_leafs(&self) -> &[Leaf]`: Returns reference to all leafs of the tree.
-  - `get_zero_index(&self) -> &[usize]`: Returns reference to the zero index vector.
-  - `get_node(&self, index: usize) -> Result<Node, MerkleError>`: Returns a node at a specific index.
-  - `get_leaf(&self, index: usize) -> Result<Leaf, MerkleError>`: Returns a leaf at a specific index.
-  - `get_height(&self) -> usize`: Returns the height of the tree.
-  - `get_proof(&self, index: usize) -> Result<InclusionProof, MerkleError>`: Generates an inclusion proof for a given leaf node.
-  - `verify_proof(&self, proof: &InclusionProof) -> Result<bool, MerkleError>`: Verifies an inclusion proof.
-  - `push(&mut self, leaf: Leaf) -> Result<usize>`: Adds a new leaf node to the tree and returns its index.
-  - `set_leaf(&mut self, leaf: Leaf, index: usize) -> Result<()>`: Modifies a current leaf node.
-  - `remove(&mut self, index: usize) -> Result<()>`: Removes a leaf node from the tree.
+## Design Rationale
 
-#### Leaf
+### Custom Implementation
+This repository implements its own Merkle Sum Tree rather than using existing libraries to maintain full control over the cryptographic primitives and tree structure. This enables:
+- Fine-tuned optimization for zero-knowledge proof systems
+- Direct integration with specific ZK frameworks
+- Customizable hashing and field arithmetic
 
-A struct representing a leaf node in the Merkle Sum Tree.
+### Flexible Prime Field
+Custom implementation with configurable prime field modulus. Currently uses Nova's field but can switch to BN254 (Circom) via recompilation. This enables compatibility with different ZK proof systems.
 
-- **Fields:**
-  - `id: String`: The identifier of the leaf.
-  - `node: Node`: The node associated with the leaf.
-
-- **Methods:**
-  - `new(id: String, value: i32) -> Leaf`: Creates a new leaf node with the given id and value.
-  - `get_id(&self) -> &str`: Returns the id of the leaf.
-  - `get_node(&self) -> Node`: Returns the node associated with the leaf.
-  - `is_none(&self) -> bool`: Checks if the leaf is a zero-value leaf.
-
-#### Node
-
-A struct representing a node in the Merkle Sum Tree.
-
-- **Fields:**
-  - `hash: Fr`: The hash of the node.
-  - `value: i32`: The value of the node.
-
-- **Methods:**
-  - `new(hash: Fr, value: i32) -> Node`: Creates a new node with the given hash and value.
-  - `get_hash(&self) -> Fr`: Returns the hash of the node.
-  - `get_value(&self) -> i32`: Returns the value of the node.
-  - `is_equal(&self, node: Node) -> bool`: Checks if the node is equal to another node.
-
-#### InclusionProof
-
-A struct representing an inclusion proof in the Merkle Sum Tree.
-
-- **Fields:**
-  - `leaf: Leaf`: The leaf node being proved.
-  - `path: Vec<Neighbor>`: The path of neighbor nodes for the proof.
-
-- **Methods:**
-  - `get_path(&self) -> &[Neighbor]`: Returns the path of neighbor nodes.
-  - `get_leaf(&self) -> &Leaf`: Returns the leaf node being proved.
-
-#### Neighbor
-
-A struct representing a neighbor node in the Merkle Sum Tree.
-
-- **Fields:**
-  - `position: Position`: The position of the neighbor node (Left or Right).
-  - `node: Node`: The neighbor node.
-
-- **Methods:**
-  - `new(position: Position, node: Node) -> Neighbor`: Creates a new neighbor node with the given position and node.
-  - `get_position(&self) -> Position`: Returns the position of the neighbor node.
-  - `get_node(&self) -> Node`: Returns the neighbor node.
-
-#### Position
-
-An enum representing the position of a neighbor node in the Merkle Sum Tree.
-
-- **Variants:**
-  - `Left`: The neighbor node is on the left.
-  - `Right`: The neighbor node is on the right.
-
-## Limitations
-
-### Tree Structure
-- Maximum tree height: 64 levels (enforced during construction)
-- Tree size must be a power of 2 (automatically padded with zero-value leaves)
-- Empty trees are not allowed
-
-### Value Constraints
-- Leaf values are `i32` integers
-- Sum overflow protection: operations fail if sum exceeds `i32::MAX`
-- Zero-value leaves have id "0" and value 0
-
-### Performance Considerations
-- Tree reconstruction occurs when adding leaves to a full tree
+### Possible Extensions
+- Runtime-configurable field and hash function selection
+- Sparse tree variant
+- Additional hash functions (Poseidon)
